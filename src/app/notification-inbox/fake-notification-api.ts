@@ -76,6 +76,7 @@ export class FakeNotificationApi {
   }));
 
   load(): Observable<readonly InboxNotification[]> {
+    console.warn('chamou')
     this.loadCount.update(count => count + 1);
     const requestNumber = this.loadCount();
     const latency = 500 + Math.random() * 500;
@@ -83,7 +84,7 @@ export class FakeNotificationApi {
 
     return timer(latency).pipe(
       mergeMap(() => {
-        if (Math.random() < 0.12) {
+        if (Math.random() < 0.50) {
           console.debug(`[api] load #${requestNumber} failed (503)`);
           return throwError(() => new HttpLikeError(503));
         }
