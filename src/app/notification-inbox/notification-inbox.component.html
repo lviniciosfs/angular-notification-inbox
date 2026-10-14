@@ -1,0 +1,90 @@
+<main class="inbox" aria-labelledby="inbox-title">
+  <header class="inbox__header">
+    <div>
+      <p class="eyebrow">ACCOUNT ACTIVITY</p>
+      <h1 id="inbox-title">Notifications</h1>
+    </div>
+
+    <span class="unread-count" aria-live="polite">
+      {{ vm().unreadCount }} unread
+    </span>
+  </header>
+
+  <nav class="filters" aria-label="Filter notifications">
+    <button
+      type="button"
+      [class.filters__button--active]="vm().filter === 'all'"
+      [attr.aria-pressed]="vm().filter === 'all'"
+      (click)="setFilter('all')"
+    >
+      All
+    </button>
+    <button
+      type="button"
+      [class.filters__button--active]="vm().filter === 'unread'"
+      [attr.aria-pressed]="vm().filter === 'unread'"
+      (click)="setFilter('unread')"
+    >
+      Unread
+    </button>
+  </nav>
+
+  @if (vm().actionError) {
+    <p class="notice notice--error" role="alert">{{ vm().actionError }}</p>
+  }
+
+  @if (vm().status === 'loading' && vm().notifications.length === 0) {
+    <p class="notice" role="status">Loading notifications…</p>
+  } @else if (vm().status === 'error' && vm().notifications.length === 0) {
+    <div class="notice notice--error" role="alert">
+      <span>Could not load notifications: {{ vm().loadError }}</span>
+      <button type="button" (click)="retryLoad()">Retry</button>
+    </div>
+  } @else {
+    <ul class="notification-list" aria-live="polite">
+      @for (notification of vm().notifications; track notification.id) {
+        <li class="notification" [class.notification--unread]="!notification.read">
+          <span class="notification__marker" aria-hidden="true"></span>
+
+          <div class="notification__content">
+            <div class="notification__heading">
+              <h2>{{ notification.title }}</h2>
+              <span class="category" [attr.data-category]="notification.category">
+                {{ notification.category }}
+              </span>
+            </div>
+            <p>{{ notification.message }}</p>
+            <time [attr.datetime]="notification.createdAt">
+              {{ notification.createdAt | date: 'medium' }}
+            </time>
+          </div>
+
+          @if (!notification.read) {
+            <button
+              class="mark-read"
+              type="button"
+              [attr.aria-label]="'Mark ' + notification.title + ' as read'"
+              (click)="markAsRead(notification.id)"
+            >
+              Mark read
+            </button>
+          } @else {
+            <span class="read-label">Read</span>
+          }
+        </li>
+      } @empty {
+        <li class="empty-state">
+          {{ vm().filter === 'unread' ? 'You are all caught up.' : 'No notifications yet.' }}
+        </li>
+      }
+    </ul>
+  }
+
+  <aside class="debug" aria-label="Fake API counters">
+    <strong>Fake API</strong>
+    <span>Loads: {{ apiStats().loads }}</span>
+    <span>Mark-read calls: {{ apiStats().markReadCalls }}</span>
+    <span>Live events: {{ apiStats().liveEvents }}</span>
+    <small>The “Action error demo” notification always fails when marked read.</small>
+  </aside>
+</main>
