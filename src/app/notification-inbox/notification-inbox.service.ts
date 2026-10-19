@@ -24,6 +24,7 @@ export class NotificationInboxService {
    */
   readonly viewModel$: Observable<NotificationViewModel> = combineLatest([
     this.reload$.pipe(startWith(false), switchMap(()=> this.api.load().pipe(
+      shareReplay({bufferSize:1, refCount: true}),
       catchError(() => { return of(null) })
     ))),
     this.filter$,
