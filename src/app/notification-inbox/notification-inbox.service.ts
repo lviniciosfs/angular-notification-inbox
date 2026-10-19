@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, Subject, catchError, combineLatest, delay, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
+import { BehaviorSubject, EMPTY, Observable, Subject, catchError, combineLatest, delay, filter, map, of, shareReplay, startWith, switchMap, take, tap } from 'rxjs';
 import { FakeNotificationApi } from './fake-notification-api';
 import {
   InboxNotification,
   INITIAL_VIEW_MODEL,
+  MAX_NOTIFICATIONS,
   NotificationFilter,
   NotificationViewModel,
 } from './notification.models';
@@ -15,6 +16,7 @@ export class NotificationInboxService {
   private readonly reload$ = new Subject<boolean>();
   private readonly filter$ = new BehaviorSubject<NotificationFilter>('all');
   private readonly markRead$ = new Subject<string>();
+  private notificationsCache = new BehaviorSubject<InboxNotification[]>([]);
 
   /**
    * TODO: replace placeholder with the inbox pipeline.
@@ -22,13 +24,12 @@ export class NotificationInboxService {
    */
   readonly viewModel$: Observable<NotificationViewModel> = combineLatest([
     this.reload$.pipe(startWith(false), switchMap(()=> this.api.load().pipe(
-      catchError((error) => {
-      return of(null);
-    })))),
-    this.filter$
+      catchError(() => { return of(null) })
+    ))),
+    this.filter$,
+    this.api.watch().pipe(startWith(null))
   ]).pipe(
-    tap(()=> console.log('1')),
-    map(([resp, filter]) => {
+    map(([resp, filter, watched]) => {
       if(resp == null){
           return{
           status: 'error',
@@ -39,10 +40,16 @@ export class NotificationInboxService {
           loadError: ''
         } as NotificationViewModel
       }
-      const respFiltered = filter != 'all' ? resp?.filter(r => !r.read) : resp;
+      const notificationCached = this.notificationsCache.getValue();
+      if(watched){
+        this.notificationsCache.next([watched, ...notificationCached])  
+      } else {
+        this.notificationsCache.next([...resp]);
+      }
+      let respFiltered = filter != 'all' ? this.notificationsCache.getValue()?.filter(r => !r.read) : this.notificationsCache.getValue();
       return {
         status: 'success',
-        notifications: respFiltered,
+        notifications: respFiltered.filter(n => n.id !== watched?.id).slice(0, MAX_NOTIFICATIONS),
         filter: filter,
         unreadCount: 0,
       } as NotificationViewModel;
